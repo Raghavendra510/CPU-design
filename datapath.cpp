@@ -2,7 +2,21 @@
 using namespace std;
 
 
+vector<int>reg(32,0);
+vector<vector<bool>>mem(1e6,vector<bool>(32,0));
 
+map<string,string> find_type={
+
+{"0110011","R_type"},
+{"0010011","I_type"},
+{"0000011","L_type"},
+{"0100011","S_type"},
+{"1100011","B_type"},
+{"1100111","Jalr"},
+{"1101111","Jal_type"}
+
+
+};
 
 
 
@@ -17,9 +31,11 @@ int main(){
     }
     
     int pc=0;
-    
-    
-    
+    for(auto& ins:machinecode){
+        string op=ins.substr(25,7);
+        
+    }
+  
     
     
     
