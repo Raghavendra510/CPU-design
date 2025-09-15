@@ -9,4 +9,4 @@ addi  a0,a5,0
 lw ra,28(sp)
 lw s0,24(sp)
 addi sp,sp,32
-jr ra
+jr Zero,ra,0
