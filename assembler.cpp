@@ -96,7 +96,7 @@ class R_type{
   int r1;
   string f3;
   int rd;
-  string opcode="110011";
+  string opcode="0110011";
   
   
     
@@ -181,7 +181,7 @@ if(mp[type][0]=="R"){
     ins.rd=values[0];
     ins.f7=mp[type][2];
     ins.f3=mp[type][1];
-    cout<<ins.f7<<" "<<tob(ins.r2,5)<<" "<<tob(ins.r1,5)<<" "<<ins.f3<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+    cout<<ins.f7<<tob(ins.r2,5)<<tob(ins.r1,5)<<ins.f3<<tob(ins.rd,5)<<ins.opcode<<endl;
     
 }
 else if(mp[type][0]=="IA"){
@@ -191,7 +191,7 @@ else if(mp[type][0]=="IA"){
   ins.im1=values[2];
   
     ins.f3=mp[type][1];
-        cout<<tob(ins.im1,12)<<" "<<tob(ins.r1,5)<<" "<<" "<<ins.f3<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+        cout<<tob(ins.im1,12)<<tob(ins.r1,5)<<ins.f3<<tob(ins.rd,5)<<ins.opcode<<endl;
     
 }
 else if(mp[type][0]=="IS"){
@@ -201,7 +201,7 @@ else if(mp[type][0]=="IS"){
     ins.rd=values[0];
     ins.im1=mp[type][2];
     ins.f3=mp[type][1];
-        cout<<ins.im1<<" "<<tob(ins.im2,5)<<" "<<tob(ins.r1,5)<<" "<<ins.f3<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+        cout<<ins.im1<<tob(ins.im2,5)<<tob(ins.r1,5)<<ins.f3<<tob(ins.rd,5)<<ins.opcode<<endl;
     
 }
 else if(mp[type][0]=="L"){
@@ -210,7 +210,7 @@ else if(mp[type][0]=="L"){
     ins.rd=values[0];
     ins.im1=values[1];
     ins.f3=mp[type][1];
-        cout<<tob(ins.im1,7)<<" "<<tob(ins.r1,5)<<" "<<" "<<ins.f3<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+        cout<<tob(ins.im1,12)<<tob(ins.r1,5)<<ins.f3<<tob(ins.rd,5)<<ins.opcode<<endl;
 }
 else if(mp[type][0]=="S"){
     S_type ins;
@@ -228,7 +228,7 @@ else if(mp[type][0]=="S"){
     for(int i=7;i<12;i++){
         i2+=temp[i];
     }
-        cout<<i1<<" "<<tob(ins.r2,5)<<" "<<tob(ins.r1,5)<<" "<<ins.f3<<" "<<i2<<" "<<ins.opcode<<endl;
+        cout<<i1<<tob(ins.r2,5)<<tob(ins.r1,5)<<ins.f3<<i2<<ins.opcode<<endl;
 }
 else if(mp[type][0]=="B"){
     B_type ins;
@@ -246,21 +246,21 @@ ins.im2=values[2];
     for(int i=7;i<12;i++){
         i2+=temp[i];
     }
-        cout<<i1<<" "<<tob(ins.r2,5)<<" "<<tob(ins.r1,5)<<" "<<ins.f3<<" "<<i2<<" "<<ins.opcode<<endl;
+        cout<<i1<<tob(ins.r2,5)<<tob(ins.r1,5)<<ins.f3<<i2<<ins.opcode<<endl;
 }
 else if(mp[type][0]=="Jal"){
     Jal_type ins;
     ins.rd=0;
     ins.im1=values[0];
-        cout<<tob(ins.im1,20)<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+        cout<<tob(ins.im1,20)<<tob(ins.rd,5)<<ins.opcode<<endl;
 }
 else if(mp[type][0]=="Jalr"){
     Jalr_type ins;
     ins.rd=values[0];
-    ins.r1=0;//to be filled
-    ins.im1=0;// to be filled
+    ins.r1=0;
+    ins.im1=0;
     ins.f3=mp[type][1];
-        cout<<tob(ins.im1,12)<<" "<<tob(ins.r1,5)<<" "<<ins.f3<<" "<<tob(ins.rd,5)<<" "<<ins.opcode<<endl;
+        cout<<tob(ins.im1,12)<<tob(ins.r1,5)<<ins.f3<<tob(ins.rd,5)<<ins.opcode<<endl;
 }
 
 
