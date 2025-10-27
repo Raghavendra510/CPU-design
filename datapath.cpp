@@ -3,6 +3,12 @@ using namespace std;
 
 
 
+
+
+
+
+
+
 class insMem{
     public:
   vector<string>instructions;
@@ -22,7 +28,7 @@ class insMem{
 
 class regFile{
      public:
-    vector<int>regs(33);
+    vector<int>regs;
     int rsl1;
     int rsl2;
     int rdl;
@@ -30,7 +36,10 @@ class regFile{
     int rs1;
     int rs2;
 
-    
+    regFile(){
+        vector<int>temp(33);
+        regs=temp;
+    }
     
     
     
@@ -40,7 +49,7 @@ class regFile{
         temp=ins.substr(19,5);
         rsl1=stoi(temp,nullptr,2);
         temp=ins.substr(20,5);
-        rdl=stoi(temp,nullpt,2);
+        rdl=stoi(temp,nullptr,2);
         if(regread){
         rs1=regs[rsl1];
         rs2=regs[rsl2];
@@ -49,7 +58,7 @@ class regFile{
     }
  void  reg_fill2(string ins,bool regread,bool regwrite){
         string temp=ins.substr(20,5);
-        rdl=stoi(temp,nullpt,2);
+        rdl=stoi(temp,nullptr,2);
       
         if(regwrite){
             regs[rdl]=w_data;
@@ -107,6 +116,7 @@ class immgen
              }
       }
       else if(opcode=="1100111"){//jalr
+        string temp1=ins.substr(0,12);
            imm=stoi(ins.substr(0,12),nullptr,2);
              if(temp1[0]=='1'){
                  imm-=(1<<12);
@@ -114,7 +124,8 @@ class immgen
          
       }
       else if(opcode=="1101111"){//jal
-      imm=stoi(ins.substr(0,20),nullpt,2);
+        string temp1=ins.substr(0,12);
+      imm=stoi(ins.substr(0,20),nullptr,2);
         if(temp1[0]=='1'){
                  imm-=(1<<20);
              }
@@ -268,12 +279,12 @@ class ALUcontrol{
         
         
         
-    }
+    };
     
     
     
     
-};
+
 
 class ALU{
   public:
@@ -446,13 +457,17 @@ class controlPath{
 
 
 class mainmem{
-  vector<int>mem(1e9);
+    public:
+  vector<int>mem;
   bool memwrite;
   bool memread;
   int EA;
   int writedata;
   int ldres;
-  
+  mainmem(){
+      vector<int>temp(1e9);
+      mem=temp;
+  }
   
   void memunit(int ea,int wd,bool mr,bool mw){
       memwrite=mw;
@@ -507,13 +522,13 @@ class mainmem{
     while(pc<machinecode.size()){
         
         string cur_ins=InsMem.fetch(pc);
-       cw(cur_ins.substr(25,7));
+       ControlPath.cw(cur_ins.substr(25,7));
         RegFile.reg_fill1(cur_ins,ControlPath.regread,ControlPath.regwrite);
         ImmGen.ig(cur_ins);
         int  a=RegFile.rs1;
         int b;
         if(ControlPath.Alusrc==1){
-            b=ImmGen.imm
+            b=ImmGen.imm;
         }
         else {
             b=RegFile.rs2;
