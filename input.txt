@@ -1,0 +1,3 @@
+addi a5,Zero,5
+addi a6,Zero,6
+mul a5,a5,a6
