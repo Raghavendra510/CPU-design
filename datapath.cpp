@@ -46,7 +46,7 @@ class regFile{
  void  reg_fill1(string ins,bool regread,bool regwrite){
         string temp=ins.substr(7,5);
          rsl2=stoi(temp,nullptr,2);
-        temp=ins.substr(19,5);
+        temp=ins.substr(12,5);
         rsl1=stoi(temp,nullptr,2);
         temp=ins.substr(20,5);
         rdl=stoi(temp,nullptr,2);
@@ -56,10 +56,10 @@ class regFile{
         }
       
     }
- void  reg_fill2(string ins,bool regread,bool regwrite){
+ void  reg_fill2(string ins,int ej,bool regread,bool regwrite){
         string temp=ins.substr(20,5);
         rdl=stoi(temp,nullptr,2);
-      
+         w_data=ej;
         if(regwrite){
             regs[rdl]=w_data;
          }
@@ -75,7 +75,7 @@ class immgen
   string ins;
  void ig(string ins){
       this->ins=ins;
-      string opcode=ins.substr(25.7);
+      string opcode=ins.substr(25,7);
      if(opcode=="0110011"){
       imm=0;
   
@@ -267,9 +267,10 @@ class ALUcontrol{
         }
         else if(aluop==4){
             if(f3=="000"){
-                
+                aluselect=0;//check once
             }
         }
+    
      
             
             
@@ -465,7 +466,7 @@ class mainmem{
   int writedata;
   int ldres;
   mainmem(){
-      vector<int>temp(1e9);
+      vector<int>temp(1e4,0);
       mem=temp;
   }
   
@@ -501,7 +502,7 @@ class mainmem{
 
 
  int main(){
-     fstream f("output.txt",ios::in|ios::out);
+     fstream f("output1.txt",ios::in|ios::out);
     vector<string>machinecode;
     string line;
     while(getline(f,line)){
@@ -565,22 +566,24 @@ class mainmem{
         else if(ControlPath.memtoreg==0){
             erenjeager=alu.alures;
         }
-        RegFile.reg_fill2(cur_ins,ControlPath.regread,ControlPath.regwrite);
+        RegFile.reg_fill2(cur_ins,erenjeager,ControlPath.regread,ControlPath.regwrite);
         
         pc=tpc;
         
         
-        
+ 
         
     }
     
     
     
+    for(int i=0;i<33;i++){
+        cout<<RegFile.regs[i]<<endl;
+    }
     
     
     
-    
-    
+    cout<<MainMem.mem[16]<<" "<<MainMem.mem[15]<<" "<<MainMem.mem[17];
     
     
     
