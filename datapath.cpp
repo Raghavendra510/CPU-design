@@ -403,7 +403,7 @@ public:
     bool regread;
     bool regwrite;
     bool Alusrc;
-    bool Aluop;
+    int Aluop;
     bool branch;
     bool memread;
     bool memwrite;
