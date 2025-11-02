@@ -32,8 +32,7 @@ public:
     {
         vector<int> temp(33);
         regs = temp;
-      regs[2]=1000;
-      
+        regs[2] = 100;
     }
 
     void reg_fill1(string ins, bool regread, bool regwrite)
@@ -56,8 +55,9 @@ public:
         rdl = stoi(temp, nullptr, 2);
         w_data = ej;
         if (regwrite)
-        { if(rdl!=0)
-            regs[rdl] = w_data;
+        {
+            if (rdl != 0)
+                regs[rdl] = w_data;
         }
     }
 };
@@ -70,7 +70,7 @@ public:
     void ig(string ins)
     {
         this->ins = ins;
-        string opcode = ins.substr(25,7);
+        string opcode = ins.substr(25, 7);
         if (opcode == "0110011")
         {
             imm = 0;
@@ -220,51 +220,40 @@ public:
 
         else if (aluop == 1)
         {
-            if (f7 == "0000000")
+
+            if (f3 == "000")
             {
-                if (f3 == "000")
-                {
-                    aluselect = 0;
-                }
-                else if (f3 == "001")
-                {
-                    aluselect = 9;
-                }
-                else if (f3 == "010")
-                {
-                    aluselect = 9;
-                }
-                else if (f3 == "011")
-                {
-                    aluselect = 7;
-                }
-                else if (f3 == "100")
-                {
-                    aluselect = 8;
-                }
-                else if (f3 == "101")
-                {
-                    aluselect = 8;
-                }
+                aluselect = 0;
             }
-            else if (f7 == "0100000")
+            else if (f3 == "001")
             {
-                if (f3 == "000")
-                {
-                    aluselect = 4;
-                }
-                else if (f3 == "001")
-                {
-                    aluselect = 5;
-                }
-                else if (f3 == "010")
-                {
-                    aluselect = 11;
-                }
-                else if (f3 == "011")
-                {
-                    aluselect = 8;
-                }
+                aluselect = 9;
+            }
+            else if (f3 == "010")
+            {
+                aluselect = 9;
+            }
+            else if (f3 == "011")
+            {
+                aluselect = 4;
+            }
+            else if (f3 == "100")
+            {
+                aluselect = 5;
+            }
+            else if (f3 == "101")
+            {
+                aluselect = 11;
+            }
+
+            else if (f3 == "110")
+            {
+                aluselect = 7;
+            }
+
+            else if (f3 == "111")
+            {
+                aluselect = 8;
             }
         }
         else if (aluop == 2)
@@ -303,8 +292,9 @@ public:
                 aluselect = 17;
             }
         }
-        else if(aluop==5){
-            aluselect=12;
+        else if (aluop == 5)
+        {
+            aluselect = 12;
         }
     }
 };
@@ -337,8 +327,9 @@ public:
             alures = alusrc1 * alusrc2;
         }
         else if (aluselect == 3)
-        {   if(alusrc2!=0)
-            alures = alusrc1 % alusrc2;
+        {
+            if (alusrc2 != 0)
+                alures = alusrc1 % alusrc2;
         }
         else if (aluselect == 4)
         {
@@ -369,8 +360,11 @@ public:
         {
             alures = (alusrc1 >= alusrc2);
         }
-
-        if (aluselect == 12)
+        else if (aluselect == 11)
+        {
+            alures = (alusrc1 ^ alusrc2);
+        }
+        else if (aluselect == 12)
         {
             zeroflag = (alusrc1 == alusrc2);
         }
@@ -402,7 +396,7 @@ class controlPath
 public:
     bool regread;
     bool regwrite;
-    bool Alusrc;
+    int Alusrc;
     int Aluop;
     bool branch;
     bool memread;
@@ -552,18 +546,18 @@ int main()
     ALU alu;
     controlPath ControlPath;
     mainmem MainMem;
-int i=1;
-    while (pc < machinecode.size()-1)
+    while (pc < machinecode.size())
     {
-        cout<<i;
-        i++;
-       if(pc==(machinecode.size()-1)) break;
+        if (pc == (machinecode.size() - 1))
+            break;
         string cur_ins = InsMem.fetch(pc);
         ControlPath.cw(cur_ins.substr(25, 7));
         RegFile.reg_fill1(cur_ins, ControlPath.regread, ControlPath.regwrite);
         ImmGen.ig(cur_ins);
         int a = RegFile.rs1;
+        cout << "a is :" << a << endl;
         int b;
+
         if (ControlPath.Alusrc == 1)
         {
             b = ImmGen.imm;
@@ -572,8 +566,12 @@ int i=1;
         {
             b = RegFile.rs2;
         }
+
+        cout << "b is :" << b << endl;
         ALUControl.alucontrolgen(cur_ins, ControlPath.Aluop);
+        cout << "aluop is :" << ControlPath.Aluop << endl;
         alu.compute(a, b, ALUControl.aluselect);
+        cout << "ALUselect  is :" << ALUControl.aluselect << endl;
         MainMem.memunit(alu.alures, RegFile.rs2, ControlPath.memread, ControlPath.memwrite);
         int npc = pc + 1;
         int jpc = pc + ImmGen.imm;
@@ -612,7 +610,7 @@ int i=1;
             erenjeager = alu.alures;
         }
         RegFile.reg_fill2(cur_ins, erenjeager, ControlPath.regread, ControlPath.regwrite);
-
+        cout << "alures is:" << alu.alures << endl;
         pc = tpc;
     }
 
@@ -620,11 +618,15 @@ int i=1;
     {
         cout << RegFile.regs[i] << endl;
     }
-//    cout<<"......................................."<<endl;
-//    for(int i=0;i<100;i++){
-//     cout<<MainMem.mem[i]<<" ";
-//     if(i%20==0){
-//         cout<<endl;
-//     }
-//    }
+
+    cout << "main mem ea is " << MainMem.EA << endl;
+    cout << "......................................." << endl;
+    for (int i = 0; i <= 100; i++)
+    {
+        cout << MainMem.mem[i] << " ";
+        if (i % 20 == 0)
+        {
+            cout << endl;
+        }
+    }
 }
