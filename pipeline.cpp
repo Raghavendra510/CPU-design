@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
+vector<int> valid(33, -1);
 
 class insMem
 {
@@ -21,7 +22,6 @@ class regFile
 {
 public:
     vector<int> regs;
-    vector<int> valid;
     int rsl1;
     int rsl2;
     int rdl;
@@ -34,9 +34,6 @@ public:
         vector<int> temp(33);
         regs = temp;
         regs[2] = 100;
-        vector<int> temp2(32, 1); // 1 = ready
-        temp2[0] = 1;             // x0 is ready (always zero)
-        valid = temp2;
     }
 
     void reg_fill1(string ins, bool regread, bool regwrite)
@@ -566,8 +563,8 @@ public:
     int v;
     ipc()
     {
-        v = 1;
         s = 0;
+        v = 1;
     }
 };
 class ifid
@@ -575,13 +572,13 @@ class ifid
 public:
     int dpc;
     int npc;
-    string ir;
     int s;
     int v;
+    string ir;
     ifid()
     {
-        v = 0;
         s = 0;
+        v = 0;
     }
 };
 class idex
@@ -602,16 +599,14 @@ public:
     int jump;
     int memtoreg;
     int regwrite;
-
-    string ir;
-    int rdl;
-
     int s;
     int v;
+    string ir;
+    int rdl;
     idex()
     {
-        v = 0;
         s = 0;
+        v = 0;
     }
 };
 class exmo
@@ -620,7 +615,8 @@ public:
     int dpc;
     int bpc;
     int jpc;
-
+    int s;
+    int v;
     int branch;
     int memread;
     int memwrite;
@@ -631,12 +627,10 @@ public:
     int aluout;
     int rs2;
     int rdl;
-    int s;
-    int v;
     exmo()
     {
-        v = 0;
         s = 0;
+        v = 0;
     }
 };
 class mowb
@@ -645,7 +639,8 @@ public:
     int dpc;
     int bpc;
     int jpc;
-
+    int s;
+    int v;
     int branch;
     int jump;
     int memtoreg;
@@ -654,22 +649,20 @@ public:
     int ldout;
     int aluout;
     int rdl;
-    int s;
-    int v;
     mowb()
     {
-        v = 0;
         s = 0;
+        v = 0;
     }
 };
-
-void insfetch(ipc &obj1, ifid &obj2, insMem &obj3)
+void insfetch(int pc, ifid &obj2, insMem &obj3)
 {
-    if (obj2.s || (!obj1.v))
+    if (obj2.s) // Don't need to check obj1.v, it's handled by main
         return;
-    obj2.ir = obj3.fetch(obj1.pc);
-    obj2.npc = obj1.pc + 1;
-    obj2.dpc = obj1.pc;
+
+    obj2.ir = obj3.fetch(pc);
+    obj2.npc = pc + 1;
+    obj2.dpc = pc;
     obj2.v = 1;
 }
 
@@ -678,6 +671,11 @@ void insdecode(ifid &obj2, idex &obj3, immgen &gen, controlPath &cp, regFile &rf
     if (obj3.s || (!obj2.v))
         return;
 
+    // if (obj2.ir.empty())
+    // {
+    //     obj3 = {}; // Propagate a zeroed-out bubble
+    //     return;
+    // }
     obj3.dpc = obj2.dpc;
     gen.ig(obj2.ir);
     int im = gen.imm;
@@ -694,48 +692,46 @@ void insdecode(ifid &obj2, idex &obj3, immgen &gen, controlPath &cp, regFile &rf
     obj3.memtoreg = cp.memtoreg;
     obj3.memwrite = cp.memwrite;
     obj3.regwrite = cp.regwrite;
-    int r1;
-    int r2;
-    r1 = stoi(obj2.ir.substr(12, 5));
-    r2 = stoi(obj2.ir.substr(7, 5));
-    if (rf.valid[r1] == 1)
+    int rsl1 = stoi(obj2.ir.substr(12, 5), nullptr, 2);
+    int rsl2 = stoi(obj2.ir.substr(7, 5), nullptr, 2);
+    if (valid[rsl1] != -1) // If the register is LOCKED
     {
-        rf.reg_fillr1(obj2.ir, cp.regread, cp.regwrite);
-        obj3.rs1 = rf.rs1;
-    }
-    else
-    {
-        obj2.s = 1;
+        obj2.s = 1; // STALL
         return;
     }
-    if (rf.valid[r2] == 1)
+    else // If the register is VALID (-1)
     {
-        rf.reg_fillr2(obj2.ir, cp.regread, cp.regwrite);
-        obj3.rs2 = rf.rs2;
-    }
-    else
-    {
-        obj2.s = 1;
-        return;
+        rf.reg_fillr1(obj2.ir, cp.regread, cp.regwrite); // READ
     }
 
-    obj3.rdl = rf.rdl;
+    if (valid[rsl2] != -1) // If the register is LOCKED
+    {
+        obj2.s = 1; // STALL
+        return;
+    }
+    else // If the register is VALID (-1)
+    {
+        rf.reg_fillr2(obj2.ir, cp.regread, cp.regwrite); // READ
+    }
+    int rdl = stoi(obj2.ir.substr(20, 5), nullptr, 2);
+    valid[rdl] = obj2.dpc;
+    obj3.rs1 = rf.rs1;
+    obj3.rs2 = rf.rs2;
+    obj3.rdl = rdl;
     obj3.ir = obj2.ir;
     obj2.s = 0;
     obj3.v = 1;
-    if (obj3.regwrite && obj3.rdl != 0)
-    {
-        rf.valid[obj3.rdl] = 0; // mark as not ready
-    }
 }
 
 void execute(idex &obj3, exmo &obj4, ALU &alu, ALUcontrol &ac)
 {
     if (obj4.s || (!obj3.v))
-    {
         return;
-    }
-
+    // if (obj3.ir.empty())
+    // {
+    //     obj4 = {}; // Propagate a zeroed-out bubble
+    //     return;
+    // }
     obj4.dpc = obj3.dpc;
     obj4.bpc = obj3.dpc + obj3.imm1;
     obj4.jpc = obj3.jpc;
@@ -770,6 +766,7 @@ void memop(exmo &obj4, mowb &obj5, mainmem &mm)
 {
     if (obj5.s || (!obj4.v))
         return;
+
     obj5.dpc = obj4.dpc;
     obj5.bpc = obj4.bpc;
     obj5.jpc = obj4.jpc;
@@ -787,8 +784,9 @@ void memop(exmo &obj4, mowb &obj5, mainmem &mm)
 
 void writeback(mowb &obj5, ipc &obj1, regFile &rf)
 {
-    if (!obj5.v)
+    if (!(obj5.v))
         return;
+
     int tpc;
     if (obj5.jump == 1)
     {
@@ -819,12 +817,12 @@ void writeback(mowb &obj5, ipc &obj1, regFile &rf)
     if (obj5.regwrite == 1 && obj5.rdl != 0)
     {
         rf.regs[obj5.rdl] = wdata;
-        rf.valid[obj5.rdl] = 1;
     }
     rf.regs[0] = 0;
-
-    if (obj5.rdl != 0)
-        rf.valid[obj5.rdl] = 1;
+    if (valid[obj5.rdl] == obj5.dpc)
+    {
+        valid[obj5.rdl] = -1;
+    }
     obj5.s = 0;
 }
 
@@ -854,21 +852,40 @@ int main()
     exmo obj4;
     mowb obj5;
     obj1.pc = 0;
-    while (obj1.pc < (int)machinecode.size() || obj2.v || obj3.v || obj4.v || obj5.v)
+    int cycle = 0;
+    // insfetch(obj1, obj2, InsMem);
+    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
+    // execute(obj3, obj4, alu, ALUControl);
+    // memop(obj4, obj5, MainMem);
+    // obj1.pc = 1;
+    // insfetch(obj1, obj2, InsMem);
+    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
+    // execute(obj3, obj4, alu, ALUControl);
+    // obj1.pc = 2;
+    // insfetch(obj1, obj2, InsMem);
+    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
+    // obj1.pc = 3;
+    // insfetch(obj1, obj2, InsMem);
+    while (obj1.pc < machinecode.size() || obj2.v || obj3.v || obj4.v || obj5.v)
     {
-        if (obj1.pc == machinecode.size() - 1)
+        cycle++;
+        if (cycle > 100)
             break;
+        int pc = obj1.pc;
         writeback(obj5, obj1, RegFile);
         memop(obj4, obj5, MainMem);
         execute(obj3, obj4, alu, ALUControl);
         insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
-        insfetch(obj1, obj2, InsMem);
-        cout<<"stages :"<<endl;
-        cout<<"obj1: "<<obj1.pc<<endl;
-        cout<<"obj2: "<<obj2.dpc<<" "<<obj2.npc<<" "<<obj2.ir<<endl;
-        cout<<"obj3: "<<obj3.dpc<<" "<<obj3.jpc<<" "<<obj3.imm1<<" "<<obj3.rs1<<" "<<obj3.rs2<<" "<<obj3.imm2<<" "<<obj3.ir<<" "<<obj3.rdl<<endl;
-        cout<<"obj4: "<<obj4.dpc<<" "<<obj4.bpc<<" "<<obj4.jpc<<" "<<obj4.aluout<<" "<<obj4.rs2<<" "<<obj4.rdl<<endl;
-        cout<<"obj5: "<<obj5.dpc<<" "<<obj5.bpc<<" "<<obj5.jpc<<" "<<obj5.ldout<<" "<<obj5.aluout<<" "<<obj5.rdl<<endl;
+        if (pc >= 0 && pc < machinecode.size())
+        {
+            insfetch(pc, obj2, InsMem);
+        }
+        cout << "stages :" << endl;
+        cout << "obj1: " << obj1.pc << endl;
+        cout << "obj2: " << obj2.dpc << " " << obj2.npc << " " << obj2.ir << endl;
+        cout << "obj3: " << obj3.dpc << " " << obj3.jpc << " " << obj3.imm1 << " " << obj3.rs1 << " " << obj3.rs2 << " " << obj3.imm2 << " " << obj3.ir << " " << obj3.rdl << endl;
+        cout << "obj4: " << obj4.dpc << " " << obj4.bpc << " " << obj4.jpc << " " << obj4.aluout << " " << obj4.rs2 << " " << obj4.rdl << endl;
+        cout << "obj5: " << obj5.dpc << " " << obj5.bpc << " " << obj5.jpc << " " << obj5.ldout << " " << obj5.aluout << " " << obj5.rdl << endl;
     }
 
     for (int i = 0; i < 33; i++)
