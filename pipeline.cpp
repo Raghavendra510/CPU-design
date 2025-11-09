@@ -655,27 +655,25 @@ public:
         v = 0;
     }
 };
-void insfetch(int pc, ifid &obj2, insMem &obj3)
+void insfetch(ipc &obj1, ifid &obj2, insMem &obj3, vector<string> machinecode)
 {
-    if (obj2.s) // Don't need to check obj1.v, it's handled by main
+    if (obj1.pc >= machinecode.size())
+        return;
+    if (obj2.s)
         return;
 
-    obj2.ir = obj3.fetch(pc);
-    obj2.npc = pc + 1;
-    obj2.dpc = pc;
+    obj2.ir = obj3.fetch(obj1.pc);
+    obj2.npc = obj1.pc + 1;
+    obj2.dpc = obj1.pc;
+    obj1.pc++;
     obj2.v = 1;
+    obj1.v = 0;
 }
 
 void insdecode(ifid &obj2, idex &obj3, immgen &gen, controlPath &cp, regFile &rf)
 {
     if (obj3.s || (!obj2.v))
         return;
-
-    // if (obj2.ir.empty())
-    // {
-    //     obj3 = {}; // Propagate a zeroed-out bubble
-    //     return;
-    // }
     obj3.dpc = obj2.dpc;
     gen.ig(obj2.ir);
     int im = gen.imm;
@@ -694,44 +692,44 @@ void insdecode(ifid &obj2, idex &obj3, immgen &gen, controlPath &cp, regFile &rf
     obj3.regwrite = cp.regwrite;
     int rsl1 = stoi(obj2.ir.substr(12, 5), nullptr, 2);
     int rsl2 = stoi(obj2.ir.substr(7, 5), nullptr, 2);
-    if (valid[rsl1] != -1) // If the register is LOCKED
+    if (valid[rsl1] != -1)
     {
-        obj2.s = 1; // STALL
+        obj2.s = 1;
+
         return;
     }
-    else // If the register is VALID (-1)
+    else
     {
-        rf.reg_fillr1(obj2.ir, cp.regread, cp.regwrite); // READ
+        rf.reg_fillr1(obj2.ir, cp.regread, cp.regwrite);
     }
 
-    if (valid[rsl2] != -1) // If the register is LOCKED
+    if (valid[rsl2] != -1)
     {
-        obj2.s = 1; // STALL
+        obj2.s = 1;
+
         return;
     }
-    else // If the register is VALID (-1)
+    else
     {
-        rf.reg_fillr2(obj2.ir, cp.regread, cp.regwrite); // READ
+        rf.reg_fillr2(obj2.ir, cp.regread, cp.regwrite);
     }
     int rdl = stoi(obj2.ir.substr(20, 5), nullptr, 2);
-    valid[rdl] = obj2.dpc;
+    if (obj3.regwrite)
+        valid[rdl] = obj2.dpc;
     obj3.rs1 = rf.rs1;
     obj3.rs2 = rf.rs2;
     obj3.rdl = rdl;
     obj3.ir = obj2.ir;
     obj2.s = 0;
     obj3.v = 1;
+    obj2.v = 0;
 }
 
-void execute(idex &obj3, exmo &obj4, ALU &alu, ALUcontrol &ac)
+void execute(ipc &obj1, ifid &obj2, idex &obj3, exmo &obj4, ALU &alu, ALUcontrol &ac)
 {
     if (obj4.s || (!obj3.v))
         return;
-    // if (obj3.ir.empty())
-    // {
-    //     obj4 = {}; // Propagate a zeroed-out bubble
-    //     return;
-    // }
+
     obj4.dpc = obj3.dpc;
     obj4.bpc = obj3.dpc + obj3.imm1;
     obj4.jpc = obj3.jpc;
@@ -751,15 +749,30 @@ void execute(idex &obj3, exmo &obj4, ALU &alu, ALUcontrol &ac)
     int aluselect = ac.aluselect;
     alu.compute(obj3.rs1, alusrc2, ac.aluselect);
     obj4.aluout = alu.alures;
-
     obj4.branch = (obj3.branch & alu.zeroflag);
     obj4.jump = obj3.jump;
     obj4.memread = obj3.memread;
     obj4.memtoreg = obj3.memtoreg;
     obj4.memwrite = obj3.memwrite;
     obj4.regwrite = obj3.regwrite;
+    int tpc;
+    if (obj3.jump == 1)
+    {
+        obj2.v = 0;
+        obj3.v = 0;
+
+        obj1.pc = obj3.jpc;
+    }
+    else if (obj4.branch == 1)
+    {
+        obj2.v = 0;
+        obj3.v = 0;
+        obj1.pc = obj4.bpc;
+    }
+
     obj3.s = 0;
     obj4.v = 1;
+    obj3.v = 0;
 }
 
 void memop(exmo &obj4, mowb &obj5, mainmem &mm)
@@ -780,6 +793,7 @@ void memop(exmo &obj4, mowb &obj5, mainmem &mm)
     obj5.ldout = mm.ldres;
     obj4.s = 0;
     obj5.v = 1;
+    obj4.v = 0;
 }
 
 void writeback(mowb &obj5, ipc &obj1, regFile &rf)
@@ -788,19 +802,7 @@ void writeback(mowb &obj5, ipc &obj1, regFile &rf)
         return;
 
     int tpc;
-    if (obj5.jump == 1)
-    {
-        tpc = obj5.jpc;
-    }
-    else if (obj5.branch == 1)
-    {
-        tpc = obj5.bpc;
-    }
-    else
-    {
-        tpc = obj5.dpc + 1;
-    }
-    obj1.pc = tpc;
+
     int wdata;
     if (obj5.jump == 1)
     {
@@ -824,6 +826,7 @@ void writeback(mowb &obj5, ipc &obj1, regFile &rf)
         valid[obj5.rdl] = -1;
     }
     obj5.s = 0;
+    obj5.v = 0;
 }
 
 int main()
@@ -835,8 +838,6 @@ int main()
     {
         machinecode.push_back(line);
     }
-
-    // pipeline required
 
     int pc = 0;
     insMem InsMem(machinecode);
@@ -853,39 +854,24 @@ int main()
     mowb obj5;
     obj1.pc = 0;
     int cycle = 0;
-    // insfetch(obj1, obj2, InsMem);
-    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
-    // execute(obj3, obj4, alu, ALUControl);
-    // memop(obj4, obj5, MainMem);
-    // obj1.pc = 1;
-    // insfetch(obj1, obj2, InsMem);
-    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
-    // execute(obj3, obj4, alu, ALUControl);
-    // obj1.pc = 2;
-    // insfetch(obj1, obj2, InsMem);
-    // insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
-    // obj1.pc = 3;
-    // insfetch(obj1, obj2, InsMem);
-    while (obj1.pc < machinecode.size() || obj2.v || obj3.v || obj4.v || obj5.v)
+
+    while (1)
     {
         cycle++;
-        if (cycle > 100)
-            break;
+
         int pc = obj1.pc;
         writeback(obj5, obj1, RegFile);
+        if (obj5.dpc == InsMem.instructions.size() - 2)
+            break;
         memop(obj4, obj5, MainMem);
-        execute(obj3, obj4, alu, ALUControl);
+        execute(obj1, obj2, obj3, obj4, alu, ALUControl);
         insdecode(obj2, obj3, ImmGen, ControlPath, RegFile);
         if (pc >= 0 && pc < machinecode.size())
         {
-            insfetch(pc, obj2, InsMem);
+            insfetch(obj1, obj2, InsMem, machinecode);
         }
-        cout << "stages :" << endl;
-        cout << "obj1: " << obj1.pc << endl;
-        cout << "obj2: " << obj2.dpc << " " << obj2.npc << " " << obj2.ir << endl;
-        cout << "obj3: " << obj3.dpc << " " << obj3.jpc << " " << obj3.imm1 << " " << obj3.rs1 << " " << obj3.rs2 << " " << obj3.imm2 << " " << obj3.ir << " " << obj3.rdl << endl;
-        cout << "obj4: " << obj4.dpc << " " << obj4.bpc << " " << obj4.jpc << " " << obj4.aluout << " " << obj4.rs2 << " " << obj4.rdl << endl;
-        cout << "obj5: " << obj5.dpc << " " << obj5.bpc << " " << obj5.jpc << " " << obj5.ldout << " " << obj5.aluout << " " << obj5.rdl << endl;
+        cout << pc << endl;
+        cout << "cycle no.: " << cycle << endl;
     }
 
     for (int i = 0; i < 33; i++)
