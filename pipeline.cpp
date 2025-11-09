@@ -870,9 +870,7 @@ int main()
         {
             insfetch(obj1, obj2, InsMem, machinecode);
         }
-        cout << pc << endl;
-        cout << "cycle no.: " << cycle << endl;
-    }
+       }
 
     for (int i = 0; i < 33; i++)
     {
