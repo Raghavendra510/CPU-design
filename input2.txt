@@ -1,4 +1,5 @@
 addi sp,sp,-32
+addi a0,Zero,45
 sw ra,28(sp)
 sw s0,24(sp)
 addi s0,sp,32
